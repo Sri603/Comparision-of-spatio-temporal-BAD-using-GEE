@@ -19,14 +19,8 @@ Hansen Forest Cover: Deforestation data.
 Other Ancillary Data: Soil moisture, precipitation, and elevation.
 Tools and Libraries
 Google Earth Engine (GEE): Cloud-based geospatial processing platform.
-Python Libraries:
-earthengine-api
-numpy
-pandas
-matplotlib
-geopandas
-scikit-learn
-seaborn
+Python Libraries: earthengine-api, numpy, pandas, matplotlib, geopandas, scikit-learn, seaborn
+
 # Methodology
 Data Collection:
 
@@ -36,13 +30,16 @@ Burned Area Classification:
 
 Apply a burn mask to isolate burned areas using threshold values.
 Train and evaluate a Gradient Boost Tree classifier with predictor variables such as NDVI, soil moisture, and LULC.
+
 Spatial Analysis:
 
 Overlay burned area maps with land use data to assess impacts on different land cover types.
+
 Temporal Analysis:
 
 Create time series of NDVI patterns to monitor vegetation recovery post-fire.
 Assess burned area trends over the period 2019–2023.
+
 Visualization:
 
 Generate thematic maps, time series plots, and interactive dashboards.
