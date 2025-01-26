@@ -26,6 +26,7 @@ Data Collection:
 
 Access multi-annual global datasets via GEE.
 Filter and clip datasets to the region of interest (ROI): Australia.
+
 Burned Area Classification:
 
 Apply a burn mask to isolate burned areas using threshold values.
@@ -49,6 +50,7 @@ https://code.earthengine.google.com/3aec221395716f056f3564c39043f360
 
 Classification and Testing of GBAD:
 https://code.earthengine.google.com/13be980cc7ab754d884b48f62b018789
+
 You can get the full script of GEE in the respected folders above.
 # Outputs
 You can find the outputs in the G-Drive Folder where we have exported the data from GEE directly.
