@@ -51,3 +51,6 @@ Comparision of Global Burned Area Products:
 https://code.earthengine.google.com/3aec221395716f056f3564c39043f360
 Classification and Testing of GBAD:
 https://code.earthengine.google.com/13be980cc7ab754d884b48f62b018789
+# Outputs
+You can find the outputs in the G-Drive Folder where we have exported the data from GEE directly.
+link for G-Drive : https://drive.google.com/drive/folders/12pYmEQyXNLtNUiMee_030KDD5Hod12tu?usp=sharing
