@@ -6,11 +6,9 @@ var Modis = ee.ImageCollection("MODIS/061/MCD64A1"),
     mcd12q1 = ee.ImageCollection("MODIS/061/MCD12Q1"),
     NDVI = ee.ImageCollection("MODIS/061/MOD13A2"),
     elevation = ee.Image("USGS/SRTMGL1_003"),
-    gaul = ee.FeatureCollection("FAO/GAUL_SIMPLIFIED_500m/2015/level0");
+    Aus = ee.FeatureCollection("projects/ee-sriramvasan603/assets/Australia");
 
 // Constants
-
-var Aus = gaul.filter(ee.Filter.eq('ADM0_NAME', 'Australia'));
 var num_points = 1000; 
 var myDriveFolder = 'GEE_Exports'; 
 var scale = 500; // Set the scale to 500m
