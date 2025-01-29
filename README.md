@@ -49,7 +49,7 @@ Comparision of Global Burned Area Products:
 https://code.earthengine.google.com/3aec221395716f056f3564c39043f360
 
 Classification and Testing of GBAD:
-https://code.earthengine.google.com/13be980cc7ab754d884b48f62b018789
+https://code.earthengine.google.com/a7fb2ab4d7987d2f7def2eb52702e5d2
 
 You can get the full script of GEE in the respected folders above.
 # Outputs
