@@ -16,7 +16,7 @@ VIIRS (VNP64A1): Active fire and burned area product.
 MODIS LULC: Land Use and Land Cover.
 MODIS NDVI: Normalized Difference Vegetation Index for pre- and post-fire assessment.
 Hansen Forest Cover: Deforestation data.
-Other Ancillary Data: Soil moisture, precipitation, and elevation.
+Other Ancillary Data: Precipitation, and elevation.
 Tools and Libraries
 Google Earth Engine (GEE): Cloud-based geospatial processing platform.
 Python Libraries: earthengine-api, numpy, pandas, matplotlib, geopandas, scikit-learn, seaborn
@@ -45,12 +45,10 @@ Visualization:
 
 Generate thematic maps, time series plots, and interactive dashboards.
 # GEE Codes 
-**Comparision 
-of Global Burned Area Products:
-**https://code.earthengine.google.com/3aec221395716f056f3564c39043f360
+**Comparision of Global Burned Area Products:** 
+https://code.earthengine.google.com/3aec221395716f056f3564c39043f360
 
-**Classification and Testing of GBAD:
-**
+**Classification and Testing of GBAD:**
 https://code.earthengine.google.com/e0b5f95617e5080e4bbf576da299f377
 
 You can get the full script of GEE in the respected folders above.
