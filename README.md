@@ -57,6 +57,6 @@ You can find the outputs in the G-Drive Folder where we have exported the data f
 link for G-Drive : https://drive.google.com/drive/folders/12pYmEQyXNLtNUiMee_030KDD5Hod12tu?usp=sharing
 
 # Geoinformatics Project website
-This website has been developed to provide an overview of the project. Additionally, a dedicated map page has been included to visualize various layers such as burned area polygons, NDVI (Normalized Difference Vegetation Index), and land surface temperature.
+This website has been developed to provide an overview of the project. Additionally, a dedicated map page has been included to visualize various layers such as burned area polygons, Forest Loss and LST-land surface temperature.
 
 You can access the website using the following link: https://serene-semolina-7a60e7.netlify.app/
