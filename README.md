@@ -51,7 +51,7 @@ https://code.earthengine.google.com/53a26f11fd0643b974c2cf68a63129ab
 You can get the full script of GEE in the respected folders above.
 # Outputs
 You can find the outputs in the G-Drive Folder where we have exported the data from GEE directly.
-link for G-Drive : https://drive.google.com/drive/folders/12pYmEQyXNLtNUiMee_030KDD5Hod12tu?usp=sharing
+link for G-Drive : https://drive.google.com/drive/folders/12vHGUNScwKUZ6m_kITRPwHaoGDhptuWD?usp=sharing
 
 # Geoinformatics Project website
 This website has been developed to provide an overview of the project. Additionally, a dedicated map page has been included to visualize various layers such as burned area polygons, Forest Loss and LST-land surface temperature.
