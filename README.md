@@ -12,7 +12,7 @@ The primary goals of this project are:
 # Dataset and Tools
 Datasets
 MODIS (MCD64A1): Burned area product at 500m resolution.
-VIIRS (VNP64A1): Active fire and burned area product.
+FIRMS: Active fire and burned area product.
 MODIS LULC: Land Use and Land Cover.
 MODIS NDVI: Normalized Difference Vegetation Index for pre- and post-fire assessment.
 Hansen Forest Cover: Deforestation data.
@@ -30,7 +30,7 @@ Filter and clip datasets to the region of interest (ROI): Australia.
 Burned Area Classification:
 
 Apply a burn mask to isolate burned areas using threshold values.
-Train and evaluate a Gradient Boost Tree classifier with predictor variables such as NDVI, soil moisture, and LULC.
+Train and evaluate a Gradient Boost Tree classifier with predictor variables such as NDVI, Forest loss and LULC.
 
 Spatial Analysis:
 
