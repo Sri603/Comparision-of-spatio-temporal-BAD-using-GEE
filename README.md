@@ -46,10 +46,7 @@ Visualization:
 Generate thematic maps, time series plots, and interactive dashboards.
 # GEE Codes 
 **Comparision of Global Burned Area Products:** 
-https://code.earthengine.google.com/3aec221395716f056f3564c39043f360
-
-**Classification and Testing of GBAD:**
-https://code.earthengine.google.com/e0b5f95617e5080e4bbf576da299f377
+https://code.earthengine.google.com/53a26f11fd0643b974c2cf68a63129ab
 
 You can get the full script of GEE in the respected folders above.
 # Outputs
