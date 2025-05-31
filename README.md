@@ -1,11 +1,11 @@
 # Comparision-of-spatio-temporal-BAD-using-GEE
 # Overview
-This project focuses on comparing the spatio-temporal distribution of burned area (BA) estimates derived from multi-annual global datasets, including MODIS (MCD64A1) and VIIRS (VNP64A1). Using Google Earth Engine (GEE), Python, and machine learning techniques, the project aims to analyze the spatial and temporal dynamics of burned areas across Australia. This repository provides all the necessary resources to replicate the analysis and results.
+This project focuses on comparing the spatio-temporal distribution of burned area (BA) estimates derived from multi-annual global datasets, including MODIS (MCD64A1) and VIIRS (VNP64A1). Using Google Earth Engine (GEE) and Python the project aims to analyze the spatial and temporal dynamics of burned areas across Australia. This repository provides all the necessary resources to replicate the analysis and results.
 # Objectives
 The primary goals of this project are:
 
 **Dataset Comparison**: Evaluate spatial and temporal discrepancies between MCD64 and VIIRS datasets.
-**Environmental Impact Assessment**: Analyze how land use, vegetation, and environmental factors (e.g., soil moisture, temperature) influence burned areas.
+**Environmental Impact Assessment**: Analyze how land use, vegetation, and environmental factors (e.g., Forest loss, land surface temperature) influence burned areas.
 **Visualization and Interpretation**: Generate maps, graphs, and charts for better understanding of fire patterns across Australia.
 **Scalability**: Leverage GEE’s cloud-based processing for scalable and automated analysis.
 **Machine Learning**: Use Gradient Boost Tree (GBT) classifiers to enhance classification accuracy.
