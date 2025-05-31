@@ -1,0 +1,467 @@
+var NDVI = ee.ImageCollection("MODIS/061/MOD13A2"),
+    Modis = ee.ImageCollection("MODIS/061/MCD64A1"),
+    hansen = ee.Image("UMD/hansen/global_forest_change_2023_v1_11"),
+    suomi_viirs = ee.ImageCollection("NASA/LANCE/SNPP_VIIRS/C2"),
+    lst = ee.ImageCollection("MODIS/061/MOD11A1"),
+    gaul = ee.FeatureCollection("FAO/GAUL_SIMPLIFIED_500m/2015/level0"),
+    lulc = ee.ImageCollection("MODIS/061/MCD12C1");
+
+// Start Date and End Date
+var startDate = ee.Date('2019-01-01'); 
+var endDate = ee.Date('2021-12-31');
+
+// Region of Interest: Australia
+var Aus = gaul.filter(ee.Filter.eq('ADM0_NAME', 'Australia'));
+
+////////////////////////////////////////////////////////////
+//////Step 1: Burned Areas from MODIS Dataset///////////////
+////////////////////////////////////////////////////////////
+var Modis = ee.ImageCollection("MODIS/061/MCD64A1")
+              .filter(ee.Filter.date('2019-01-01','2021-12-31'))
+              .filterBounds(Aus);
+
+var burned = Modis.select('BurnDate');
+
+// Function to compute the burned area for each date
+var computeBurnedArea = function(image) {
+  var burnDate = image.select('BurnDate');
+  var burnedMask = burnDate.gt(0);
+  var areaImage = ee.Image.pixelArea().updateMask(burnedMask);
+  var burnedArea = areaImage.reduceRegion({
+    reducer: ee.Reducer.sum(),
+    geometry: Aus.geometry(),
+    scale: 500, 
+    maxPixels: 1e13
+  });
+  var burnedAreaHectares = ee.Number(burnedArea.get('area')).divide(10000);
+  return ee.Feature(null, {
+    'Burn Date': ee.Date(image.get('system:time_start')).format('YYYY-MM-dd'),
+    'Burned Area Hectares': burnedAreaHectares
+  });
+};
+var burnedAreaFeatures = burned.map(computeBurnedArea);
+var burnedAreaCollection = ee.FeatureCollection(burnedAreaFeatures);
+print('Burned Area Collection:', burnedAreaCollection);
+Export.table.toDrive({
+  collection: burnedAreaCollection,
+  description: 'Burned_Area_2019-2021',
+  folder: 'GEE_Exports',
+  fileNamePrefix: 'Burned_Area_2019-2021',
+  fileFormat: 'CSV'
+});
+var VisParams = {
+  min: 30,
+  max: 355,
+  palette: [
+    'ffffcc', 'ffeda0', 'fed976', 'feb24c',
+    'fd8d3c', 'fc4e2a', 'e31a1c', 'bd0026', '800026'
+  ]
+};
+var ba = burned.max().clip(Aus);
+Map.centerObject(Aus, 5);
+Map.addLayer(ba, VisParams, 'Burned Area 2019-2021');
+Export.image.toDrive({
+  image: ba,
+  description: 'Burned_Area_TIF_2019_2021',
+  folder: 'GEE_Exports',              
+  fileNamePrefix: 'Burned_Area_2019_2021',
+  region: Aus.geometry(),
+  scale: 500,                         
+  crs: 'EPSG:4326',                   
+  maxPixels: 1e13,
+  fileFormat: 'GeoTIFF'
+});
+
+////////////////////////////////////////////////////////////
+////// Step 2: Loading Active Fires Dataset/////////////////
+////////////////////////////////////////////////////////////
+
+var firms = ee.ImageCollection('FIRMS')
+                      .filter(ee.Filter.date('2019-06-01', '2020-05-31'))
+                      .filterBounds(Aus);
+var clippedDataset = firms.map(function(image) {
+  return image.clip(Aus);
+});
+var categorized = clippedDataset.map(function(image) {
+  var category = ee.Image(0)
+    .where(image.select('T21').gte(280).and(image.select('T21').lt(300)), 1)  // Yellow
+    .where(image.select('T21').gte(300).and(image.select('T21').lt(320)), 2)  // Orange
+    .where(image.select('T21').gte(320).and(image.select('T21').lt(340)), 3)  // Red
+    .where(image.select('T21').gte(340).and(image.select('T21').lt(380)), 4)  // White
+    .where(image.select('T21').gte(380), 5);  // Dark Red
+
+  return category.rename('Category').copyProperties(image, ['system:time_start']);
+});
+var mergedCategorized = categorized.mosaic();
+var firePoints = mergedCategorized.reduceToVectors({
+  geometry: Aus.geometry(),
+  scale: 500,
+  geometryType: 'centroid',
+  bestEffort: true,
+  crs: 'EPSG:4326'
+});
+var firePointsWithProperties = firePoints.map(function(feature) {
+  var category = ee.Number(feature.get('label'));
+  var coords = feature.geometry().coordinates();
+  var lon = ee.Number(ee.List(coords).get(0));
+  var lat = ee.Number(ee.List(coords).get(1));
+  var color = ee.String(
+    ee.Algorithms.If(category.eq(1), 'yellow',
+    ee.Algorithms.If(category.eq(2), 'orange',
+    ee.Algorithms.If(category.eq(3), 'red',
+    ee.Algorithms.If(category.eq(4), 'white', 'darkred'))))
+  );
+
+  return feature.set({
+    'Longitude': lon,
+    'Latitude': lat,
+    'Category': category,
+    'Color': color
+  });
+});
+var styledPoints = firePointsWithProperties.map(function(feature) {
+  return feature.set('style', {
+    color: feature.get('Color'),
+    width: 1
+  });
+});
+Map.centerObject(Aus, 4);
+Map.addLayer(styledPoints.style({styleProperty: 'style'}), {}, 'Categorized Fire Points');
+Export.table.toDrive({
+  collection: firePointsWithProperties,
+  description: 'Firms_Categorized_Fire_Points_Australia_2019-2020',
+  fileFormat: 'CSV',
+  selectors: ['Longitude', 'Latitude', 'Category', 'Color']
+});
+/////////////////////////////////////////////////////////////
+// Step 3: Loading Land Surface Temperature Dataset//////////
+/////////////////////////////////////////////////////////////
+
+
+var lst = ee.ImageCollection("MODIS/061/MOD11A1");
+
+var mod = lst.filterDate('2019-01-01','2019-12-31');
+var modisLSTday = mod.select('LST_Day_1km');
+var modisLSTc = modisLSTday.map(function(img){
+  return img
+  .multiply(0.02)
+  .subtract(273.15)
+  .copyProperties(img,['system:time_start']);
+});
+var clippedLSTc = modisLSTc.mean().clip(Aus);
+Map.addLayer(clippedLSTc,{
+  min:10,
+  max:45,
+  palette:['blue','limegreen','yellow','darkorange','red']
+},'Mean Temperature of 2019');
+
+Export.image.toDrive({
+  image: clippedLSTc,  
+  description: 'LandSurfTemp_Aus_2019', 
+  folder: 'GEE_Exports',
+  scale: 1000, 
+  crs: 'EPSG:4326',
+  fileFormat:'GEOTIFF',
+  maxPixels:1e10
+  
+});
+
+/////////////////////////////////////////////////////////////
+// Step 4: Loading Land Use Land Cover Dataset///////////////
+/////////////////////////////////////////////////////////////
+
+var lulc = ee.ImageCollection('MODIS/061/MCD12C1')
+                .filter(ee.Filter.date('2022-01-01', '2022-12-31'))
+                .filterBounds(Aus); 
+
+var image = lulc.first();
+var imageClipped = image.clip(Aus);
+
+// Define the remapping for land cover types
+var lookupIn = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];  
+var lookupOut = [0,  // Water
+                1,  // Forest
+                1,  // Forest
+                1,  // Forest
+                1,  // Forest
+                1,  // Forest
+                2,  // Shrubs
+                2,  // Shrubs
+                3,  // Grass
+                3,  // Grass
+                4,  // Cropland
+                4,  // Cropland
+                5,  // Mixed Land
+                5,  // Mixed Land
+                6,  // Sparse
+                7]; // Snow and Ice
+
+// Reclassifying the land cover band
+var landCoverBand = imageClipped.select('Majority_Land_Cover_Type_1');
+var classifiedLandCover = landCoverBand.remap({
+  from: lookupIn,
+  to: lookupOut,
+  defaultValue: 7  
+}).rename('classified');
+var visParams = {
+  min: 0,
+  max: 7,
+  palette: ['blue', 'green', 'yellow', 'orange', 'red', 'gray', 'white']
+};
+Map.addLayer(classifiedLandCover, visParams, 'Classified Land Cover (Aus)');
+var pixelArea = ee.Image.pixelArea();
+var landCoverArea = classifiedLandCover.multiply(pixelArea);
+var areaByLandCoverGroup = landCoverArea.reduceRegion({
+  reducer: ee.Reducer.sum(),
+  geometry: Aus.geometry(),
+  scale: 500, 
+  maxPixels: 1e13
+});
+print('Area by Land Cover Group (square meters):', areaByLandCoverGroup);
+function computeArea(landCoverValue) {
+  var mask = classifiedLandCover.eq(landCoverValue);
+  var areaImage = mask.multiply(pixelArea);
+  var area = areaImage.reduceRegion({
+    reducer: ee.Reducer.sum(),
+    geometry: Aus.geometry(),
+    scale: 500, 
+    maxPixels: 1e13
+  });
+  var areaInSquareKilometers = ee.Number(area.get('classified')).divide(1e6);
+  return areaInSquareKilometers;
+}
+
+var areaWater = computeArea(0);
+var areaForest = computeArea(1);
+var areaShrubs = computeArea(2);
+var areaGrass = computeArea(3);
+var areaCropland = computeArea(4);
+var areaMixedLand = computeArea(5);
+var areaSparse = computeArea(6);
+var areaSnowIce = computeArea(7);
+
+print('Area of Water (square kilometeres):', areaWater);
+print('Area of Forest (square kilometeres):', areaForest);
+print('Area of Shrubs (square kilometeres):', areaShrubs);
+print('Area of Grass (square kilometeres):', areaGrass);
+print('Area of Cropland (square kilometeres):', areaCropland);
+print('Area of Mixed Land (square kilometeres):', areaMixedLand);
+print('Area of Sparse (square kilometeres):', areaSparse);
+print('Area of Snow/Ice (square kilometeres):', areaSnowIce);
+
+Export.image.toDrive({
+  image: classifiedLandCover,
+  description: 'LULC_Aus_2022',
+  folder:'GEE_Exports',
+  maxPixels: 1e13,
+  scale: 500,
+  region: Aus, 
+  fileFormat: 'GeoTIFF',
+  crs: 'EPSG:4326'
+});
+
+var areaFeatures = [];
+
+function addAreaFeature(name, area) {
+  var feature = ee.Feature(null, {
+    'Land Cover Type': name,
+    'Area (sq km)': area
+  });
+  areaFeatures.push(feature);
+}
+addAreaFeature('Water', areaWater);
+addAreaFeature('Forest', areaForest);
+addAreaFeature('Shrubs', areaShrubs);
+addAreaFeature('Grass', areaGrass);
+addAreaFeature('Cropland', areaCropland);
+addAreaFeature('Mixed Land', areaMixedLand);
+addAreaFeature('Sparse', areaSparse);
+addAreaFeature('Snow/Ice', areaSnowIce);
+var areaFeatureCollection = ee.FeatureCollection(areaFeatures);
+
+print('Area Feature Collection:', areaFeatureCollection);
+
+Export.table.toDrive({
+  collection: areaFeatureCollection,
+  description: 'LandCoverArea_Australia_2022',
+  folder: 'GEE_Exports',
+  fileFormat: 'CSV'
+});
+/////////////////////////////////////////////////////////////
+/////////// Step 5: Loading NDVI Dataset/////////////////////
+/////////////////////////////////////////////////////////////
+
+
+var NDVI = ee.ImageCollection("MODIS/006/MOD13A2")
+            .select('NDVI') // Select the NDVI band
+            .filterBounds(Aus); 
+
+var years = ee.List.sequence(2010, 2021, 1);
+var months = ee.List.sequence(1, 12, 1);
+
+var NDVI_Monthly = ee.ImageCollection.fromImages(
+  years.map(function(y) {
+    return months.map(function(m) {
+      var filtered_Monthly = NDVI.filter(ee.Filter.calendarRange(y, y, 'year'))
+                                 .filter(ee.Filter.calendarRange(m, m, 'month'))
+                                 .mean(); 
+      return filtered_Monthly.set('year', y)
+                             .set('month', m)
+                             .set('system:time_start', ee.Date.fromYMD(y, m, 1).millis());
+    });
+  }).flatten()
+);
+
+print(NDVI_Monthly, 'NDVI_Monthly');
+
+
+Map.addLayer(NDVI_Monthly.first().clip(Aus), 
+             {min: -2000, max: 10000, palette: ['blue', 'white', 'green']}, 
+             'NDVI First Month');
+
+
+var NDVI_TimeSeries = ui.Chart.image.series({
+  imageCollection: NDVI_Monthly, 
+  region: Aus, 
+  reducer: ee.Reducer.mean(), 
+  scale: 5000,
+  xProperty: 'system:time_start'
+})
+.setOptions({
+  title: 'NDVI Time Series',
+  hAxis: {title: 'Time'},
+  vAxis: {title: 'NDVI'},
+  lineWidth: 2,
+  pointSize: 3,
+  colors: ['green']
+});
+
+
+print(NDVI_TimeSeries);
+
+Export.image.toDrive({
+  image: NDVI_Monthly,  
+  description: 'NDVI', 
+  folder: 'GEE_Exports',
+  scale: 1000, 
+  crs: 'EPSG:4326',
+  fileFormat:'GEOTIFF',
+  maxPixels:1e10
+});
+
+/////// NDVI Anomaly: Pre vs Post Fire (2021)////////////
+
+
+var preFireNDVI = NDVI.filterDate('2020-01-01', '2020-12-31').mean();  // Pre-fire baseline
+var postFireNDVI = NDVI.filterDate('2021-01-01', '2021-12-31').mean(); // Post-fire year
+var ndviAnomaly = postFireNDVI.subtract(preFireNDVI).clip(Aus);
+var anomalyVis = {
+  min: -0.5,
+  max: 0.5,
+  palette: ['red', 'white', 'green']
+};
+
+Map.addLayer(ndviAnomaly, anomalyVis, 'NDVI Anomaly (2020 vs 2021)');
+Map.centerObject(Aus, 5);
+
+  
+/////////////////////////////////////////////////////////////
+//// Step 6: Loading Global Forest Change Dataset////////////
+/////////////////////////////////////////////////////////////
+
+var forestLoss = hansen.select(['loss']);
+var lossYear = hansen.select('lossyear');
+
+var startYear = 2002;
+var endYear = 2022;
+var years = ee.List.sequence(startYear, endYear);
+var annualLoss = ee.FeatureCollection(years.map(function(year) {
+  year = ee.Number(year);
+  var index = year.subtract(2000); 
+  var yearMask = lossYear.eq(index);
+  var maskedLoss = forestLoss.updateMask(yearMask);
+  var areaImage = maskedLoss.multiply(ee.Image.pixelArea());
+
+  var stats = areaImage.reduceRegion({
+    reducer: ee.Reducer.sum(),
+    geometry: Aus,
+    scale: 500,
+    maxPixels: 1e13
+  });
+
+  var lossHa = ee.Number(stats.get('loss')).divide(1e4);
+
+  return ee.Feature(null, {
+    'Year': year,
+    'Loss_ha': lossHa
+  });
+}));
+
+print('Annual Forest Loss in Australia (2002–2022, ha):', annualLoss);
+annualLoss.evaluate(function(fc) {
+  fc.features.forEach(function(f) {
+    var props = f.properties;
+    print('Year:', props.Year, '→ Forest Loss (ha):', props.Loss_ha);
+  });
+});
+Export.table.toDrive({
+  collection: annualLoss,
+  description: 'Forest_Loss_Australia_2002_2022',
+  fileFormat: 'CSV',
+  selectors: ['Year', 'Loss_ha']
+});
+var chart = ui.Chart.feature.byFeature({
+  features: annualLoss,
+  xProperty: 'Year',
+  yProperties: ['Loss_ha']
+})
+.setChartType('LineChart')
+.setOptions({
+  title: 'Annual Forest Loss in Australia (2002–2022)',
+  hAxis: {title: 'Year'},
+  vAxis: {title: 'Forest Loss (ha)'},
+  lineWidth: 2,
+  pointSize: 4,
+  colors: ['#d73027']
+});
+print(chart);
+
+//////////////// Forest Loss Trend and Hotspots ///////////
+
+var lossMask = forestLoss.updateMask(forestLoss); // Mask where loss occurred
+var lossYearBand = hansen.select('lossyear');
+var lossByYear = ee.List.sequence(1, 21).map(function(y) {
+  y = ee.Number(y);
+  var yearLoss = lossYearBand.eq(y);
+  return yearLoss.reduceRegion({
+    reducer: ee.Reducer.sum(),
+    geometry: Aus,
+    scale: 30,
+    maxPixels: 1e13
+  }).get('lossyear');
+});
+
+////////////// Hotspot Visualization //////////////
+
+// Heatmap of loss areas (darker = more loss)
+var forestLossHeatmap = lossMask.reduceNeighborhood({
+  reducer: ee.Reducer.sum(),
+  kernel: ee.Kernel.square(5),
+});
+
+Map.addLayer(forestLossHeatmap.clip(Aus), {
+  min: 0,
+  max: 50,
+  palette: ['black', 'orange', 'red']
+}, 'Forest Loss Hotspots (2001–2021)');
+Export.image.toDrive({
+  image:forestLossHeatmap ,
+  description: 'ForestLoss',
+  folder: 'GEE_Exports',              
+  fileNamePrefix: 'ForestLoss',
+  region: Aus.geometry(),
+  scale: 500,                         
+  crs: 'EPSG:4326',                  
+  maxPixels: 1e13,
+  fileFormat: 'GeoTIFF'
+});
